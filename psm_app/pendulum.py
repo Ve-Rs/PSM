@@ -1,24 +1,27 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-import time as timeImport
 
+
+# =========================
+# PHYSICS MODEL
+# =========================
 
 def simulate_pendulum(theta0, omega0, g, L, gamma, dt, t_max):
     """
     Simulate a mathematical pendulum using the Euler method.
-    Returns arrays of theta and omega.
+    Returns time, theta, omega arrays.
     """
-    n_steps = int(t_max / dt)
+    n = int(t_max / dt)
 
-    theta = np.zeros(n_steps)
-    omega = np.zeros(n_steps)
-    time = np.zeros(n_steps)
+    theta = np.zeros(n)
+    omega = np.zeros(n)
+    time = np.zeros(n)
 
     theta[0] = theta0
     omega[0] = omega0
 
-    for i in range(1, n_steps):
+    for i in range(1, n):
         omega[i] = omega[i-1] - (g / L) * np.sin(theta[i-1]) * dt - gamma * omega[i-1] * dt
         theta[i] = theta[i-1] + omega[i] * dt
         time[i] = time[i-1] + dt
@@ -26,20 +29,21 @@ def simulate_pendulum(theta0, omega0, g, L, gamma, dt, t_max):
     return time, theta, omega
 
 
-def run():
-    
-    placeholder = st.empty() # to fix state leak
+# =========================
+# STREAMLIT APP
+# =========================
 
-    st.header("Mathematical Pendulum – Phase Space")
+def run():
+    st.header("Mathematical Pendulum – Phase Space (θ, ω)")
 
     st.markdown(
         """
-        This simulation shows the phase space trajectory (θ, ω) of a
-        mathematical pendulum with optional damping.
+        This simulation presents the phase-space trajectory of a mathematical
+        pendulum. The system evolution is explored using a time-step slider.
         """
     )
 
-    # Sidebar parameters
+    # ---------- Sidebar Controls ----------
     st.sidebar.subheader("Pendulum parameters")
 
     theta0_deg = st.sidebar.slider(
@@ -78,34 +82,44 @@ def run():
         5.0, 50.0, 20.0
     )
 
-    # Run simulation
+    # ---------- Run Simulation Once ----------
     time, theta, omega = simulate_pendulum(
         theta0, omega0, g, L, gamma, dt, t_max
     )
 
-    # Optional time plots — show immediately (move before animation loop)
-    with st.expander("Show time evolution"):
+    # ---------- Time-Step Slider ----------
+    i = st.slider(
+        "Time step",
+        0,
+        len(time) - 1,
+        0
+    )
+
+    # ---------- Phase Space Plot ----------
+    fig, ax = plt.subplots()
+    ax.plot(theta[:i], omega[:i], color="blue", linewidth=2)
+    ax.scatter(theta[i], omega[i], color="red", s=40)
+
+    ax.set_xlabel("θ (angle)")
+    ax.set_ylabel("ω (angular velocity)")
+    ax.set_title(f"Phase Space at t = {time[i]:.2f} s")
+
+    ax.set_xlim(-np.pi, np.pi)
+    ax.set_ylim(min(omega) * 1.1, max(omega) * 1.1)
+    ax.grid(True, linestyle="--", alpha=0.5)
+
+    st.pyplot(fig)
+
+    # ---------- Optional Time Evolution ----------
+    with st.expander("Show time evolution θ(t) and ω(t)"):
         fig2, ax2 = plt.subplots()
         ax2.plot(time, theta, label="θ(t)")
         ax2.plot(time, omega, label="ω(t)")
-        ax2.legend()
         ax2.set_xlabel("Time")
+        ax2.legend()
+        ax2.grid(True, linestyle="--", alpha=0.5)
         st.pyplot(fig2)
 
-    placeholder = st.empty()
 
-    # Setup outside the loop
-    fig, ax = plt.subplots()
-    line, = ax.plot([], [], lw=2) # Create an empty line object
-    ax.set_xlabel("θ (angle)")
-    ax.set_ylabel("ω (angular velocity)")
-    ax.set_title("Phase Space Diagram")
-    ax.set_xlim(-np.pi, np.pi)
-    # set y limist based on omega range
-    ax.set_ylim(min(omega)*1.1, max(omega)*1.1)
-
-    for i in range(10, len(theta), 5):
-        # Update only the data, no need to clear the axes!
-        line.set_data(theta[:i], omega[:i])
-        placeholder.pyplot(fig)
-        timeImport.sleep(0.01)
+if __name__ == "__main__":
+    run()
