@@ -6,7 +6,7 @@ import time
 
 # ---------- SIMPLE PENDULUM ----------
 
-def simulate_simple(theta0, omega0, g, L, dt, t_max):
+def simulate_simple(theta0, omega0, g, L, dt, t_max, gamma=0.1):
     n = int(t_max / dt)
 
     theta = np.zeros(n)
@@ -16,7 +16,7 @@ def simulate_simple(theta0, omega0, g, L, dt, t_max):
     omega[0] = omega0
 
     for i in range(1, n):
-        omega[i] = omega[i-1] - (g / L) * np.sin(theta[i-1]) * dt
+        omega[i] = omega[i-1] - (g / L) * np.sin(theta[i-1]) * dt - gamma * omega[i-1] * dt
         theta[i] = theta[i-1] + omega[i] * dt
 
     x = L * np.sin(theta)
