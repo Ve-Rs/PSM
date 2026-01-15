@@ -42,6 +42,39 @@ def compute_collision(x1, x2, v1, v2, m1, m2, r1, r2, restitution):
         
     return v1, v2, False
 
+#-- simulation and rendering --
+def simulate_collision(
+    m1, m2, v1_init, v2_init, offset,
+    restitution, dt=0.02, steps=200
+):
+    x1 = np.array([-4.0, 0.0])
+    x2 = np.array([4.0, offset])
+
+    v1 = np.array([v1_init, 0.0])
+    v2 = np.array([v2_init, 0.0])
+
+    R1 = R2 = 0.4
+
+    history = []
+
+    for _ in range(steps):
+        x1 = x1 + v1 * dt
+        x2 = x2 + v2 * dt
+
+        v1, v2, _ = compute_collision(
+            x1, x2, v1, v2,
+            m1, m2, R1, R2, restitution
+        )
+
+        history.append({
+            "x1": x1.copy(),
+            "x2": x2.copy(),
+            "v1": v1.copy(),
+            "v2": v2.copy()
+        })
+
+    return history
+
 # ---------- 2. STREAMLIT APP ----------
 
 def run():
@@ -66,117 +99,43 @@ def run():
     v2_init = st.sidebar.slider("Velocity X (m2)", -5.0, 5.0, -2.0)
     offset = st.sidebar.slider("Impact Parameter (Offset Y)", 0.0, 1.0, 0.2, 
                                help="Shifts m2 up/down to create glancing collisions")
-
-    # --- Session State for Animation ---
-    if 'sim_running' not in st.session_state:
-        st.session_state.sim_running = False
-        st.session_state.x1 = np.array([-4.0, 0.0])
-        st.session_state.x2 = np.array([4.0, offset])
-        st.session_state.v1 = np.array([v1_init, 0.0])
-        st.session_state.v2 = np.array([v2_init, 0.0])
-        st.session_state.energy_history = []
-
-    # --- Control Buttons ---
-    col1, col2, col3 = st.columns(3)
     
-    if col1.button("▶️ Start"):
-        st.session_state.sim_running = True
-        
-    if col2.button("⏸️ Stop"):
-        st.session_state.sim_running = False
-        
-    if col3.button("Pw Reset"):
-        st.session_state.sim_running = False
-        st.session_state.x1 = np.array([-4.0, 0.0])
-        st.session_state.x2 = np.array([4.0, offset])
-        st.session_state.v1 = np.array([v1_init, 0.0])
-        st.session_state.v2 = np.array([v2_init, 0.0])
-        st.session_state.energy_history = []
-        st.rerun()
+    history = simulate_collision(
+        m1, m2,
+        v1_init, v2_init,
+        offset, restitution
+    )
 
-    # --- Plot Placeholders ---
-    # We use two columns: Animation on left, Energy Graph on right
-    plot_col, stats_col = st.columns([2, 1])
-    
-    with plot_col:
-        plot_placeholder = st.empty()
-    with stats_col:
-        energy_placeholder = st.empty()
+    step = st.slider(
+        "Simulation step",
+        0, len(history) - 1,
+        0
+    )
 
-    # --- Simulation Loop ---
-    # CONSTANTS
-    R1, R2 = 0.4, 0.4  # Radii
-    BASE_DT = 0.03     # Base physics step
-    
-    if st.session_state.sim_running:
-        # Run a small batch of frames
-        for _ in range(200): # Limit max frames per click to prevent infinite loops hanging browser
-            if not st.session_state.sim_running:
-                break
-                
-            # 1. Physics Step (Scaled by User Speed)
-            dt = BASE_DT * time_scale
-            
-            # Update Positions
-            st.session_state.x1 += st.session_state.v1 * dt
-            st.session_state.x2 += st.session_state.v2 * dt
-            
-            # Detect & Resolve Collision
-            v1_new, v2_new, hit = compute_collision(
-                st.session_state.x1, st.session_state.x2,
-                st.session_state.v1, st.session_state.v2,
-                m1, m2, R1, R2, restitution
-            )
-            
-            st.session_state.v1 = v1_new
-            st.session_state.v2 = v2_new
-            
-            # Calculate Energy
-            E_kin = 0.5 * m1 * np.linalg.norm(st.session_state.v1)**2 + \
-                    0.5 * m2 * np.linalg.norm(st.session_state.v2)**2
-            st.session_state.energy_history.append(E_kin)
-            
-            # 2. Rendering (The Animation)
-            fig, ax = plt.subplots(figsize=(5, 3)) # Small size for speed
-            ax.set_xlim(-6, 6)
-            ax.set_ylim(-3, 3)
-            ax.set_aspect('equal')
-            ax.grid(True, linestyle='--', alpha=0.5)
-            
-            # Draw Particles
-            c1 = plt.Circle(st.session_state.x1, R1, color='royalblue', alpha=0.9)
-            c2 = plt.Circle(st.session_state.x2, R2, color='crimson', alpha=0.9)
-            ax.add_patch(c1)
-            ax.add_patch(c2)
-            
-            # Draw Velocity Vectors (Arrows)
-            ax.arrow(st.session_state.x1[0], st.session_state.x1[1], 
-                     st.session_state.v1[0]*0.5, st.session_state.v1[1]*0.5, 
-                     head_width=0.2, color='royalblue')
-            ax.arrow(st.session_state.x2[0], st.session_state.x2[1], 
-                     st.session_state.v2[0]*0.5, st.session_state.v2[1]*0.5, 
-                     head_width=0.2, color='crimson')
+    state = history[step]
 
-            plot_placeholder.pyplot(fig)
-            plt.close(fig) # Crucial: Close memory leak
-            
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.set_xlim(-6, 6)
+    ax.set_ylim(-3, 3)
+    ax.set_aspect("equal")
+    ax.grid(True, linestyle="--", alpha=0.5)
 
-            # Smooth Frame Rate Control
-            # We always sleep a tiny bit to let the UI breathe, 
-            # but the SPEED is controlled by 'dt' above.
-            time.sleep(0.01) 
-            
-    else:
-        # Static View (When stopped/loaded)
-        fig, ax = plt.subplots(figsize=(5, 3))
-        ax.set_xlim(-6, 6)
-        ax.set_ylim(-3, 3)
-        ax.set_aspect('equal')
-        ax.grid(True, linestyle='--', alpha=0.5)
-        
-        c1 = plt.Circle(st.session_state.x1, R1, color='royalblue')
-        c2 = plt.Circle(st.session_state.x2, R2, color='crimson')
-        ax.add_patch(c1)
-        ax.add_patch(c2)
-        
-        plot_placeholder.pyplot(fig)
+    # Particles
+    ax.add_patch(plt.Circle(state["x1"], 0.4, color="royalblue"))
+    ax.add_patch(plt.Circle(state["x2"], 0.4, color="crimson"))
+
+    # Velocity vectors
+    ax.arrow(
+        state["x1"][0], state["x1"][1],
+        state["v1"][0] * 0.5, state["v1"][1] * 0.5,
+        head_width=0.2, color="royalblue"
+    )
+
+    ax.arrow(
+        state["x2"][0], state["x2"][1],
+        state["v2"][0] * 0.5, state["v2"][1] * 0.5,
+        head_width=0.2, color="crimson"
+    )
+
+
+    st.pyplot(fig)
