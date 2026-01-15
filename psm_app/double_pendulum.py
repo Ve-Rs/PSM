@@ -75,7 +75,7 @@ def simulate_double(theta1_init, theta2_init, g, L1, L2, m1, m2, dt, t_max, gamm
 # =========================
 
 def run():
-    st.header("Pendulum Experiments – Motion Trace")
+    st.header("Pendulum Experiments – Motion Trace (Slider Controlled)")
 
     mode = st.sidebar.radio(
         "Pendulum type",
@@ -85,33 +85,40 @@ def run():
     g = st.sidebar.slider("Gravity g", 1.0, 20.0, 9.81)
     dt = st.sidebar.slider("Time step Δt", 0.01, 0.05, 0.02)
     t_max = st.sidebar.slider("Simulation time", 5.0, 30.0, 15.0)
-    frame_skip = st.sidebar.slider("Animation speed", 1, 10, 3)
 
     fig, ax = plt.subplots()
     ax.set_aspect("equal")
     ax.set_xlim(-4, 4)
     ax.set_ylim(-4, 4)
-
-    plot_area = st.empty()
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
 
     if mode == "Simple pendulum":
+        st.subheader("Simple pendulum")
+
         L = st.sidebar.slider("Length L", 0.5, 3.0, 1.5)
         theta0 = np.radians(st.sidebar.slider("Initial angle (deg)", 5, 170, 60))
 
         x, y = simulate_simple(theta0, 0.0, g, L, dt, t_max)
 
-        trace, = ax.plot([], [], "b-")
-        rod, = ax.plot([], [], "k-")
-        mass = ax.scatter([], [], c="red")
+        i = st.slider(
+            "Time step",
+            0,
+            len(x) - 1,
+            0
+        )
 
-        for i in range(0, len(x), frame_skip):
-            trace.set_data(x[:i], y[:i])
-            rod.set_data([0, x[i]], [0, y[i]])
-            mass.set_offsets([[x[i], y[i]]])
-            ax.set_title("Simple pendulum")
-            plot_area.pyplot(fig)
+        ax.plot(x[:i], y[:i], color="blue", label="Trajectory")
+        ax.plot([0, x[i]], [0, y[i]], color="black", linewidth=2)
+        ax.scatter(x[i], y[i], color="red", s=40)
+        ax.set_title(f"t = {i * dt:.2f} s")
+        ax.legend()
+
+        st.pyplot(fig)
 
     else:
+        st.subheader("Double pendulum")
+
         L1 = st.sidebar.slider("Length L1", 0.5, 2.5, 1.2)
         L2 = st.sidebar.slider("Length L2", 0.5, 2.5, 1.2)
         m1 = st.sidebar.slider("Mass m1", 0.5, 3.0, 1.0)
@@ -122,20 +129,24 @@ def run():
 
         x1, y1, x2, y2 = simulate_double(t1, t2, g, L1, L2, m1, m2, dt, t_max)
 
-        trace, = ax.plot([], [], "purple", lw=1)
-        rod1, = ax.plot([], [], "k-", lw=2)
-        rod2, = ax.plot([], [], "k-", lw=2)
-        m1_dot = ax.scatter([], [], c="blue", s=30)
-        m2_dot = ax.scatter([], [], c="red", s=20)
+        i = st.slider(
+            "Time step",
+            0,
+            len(x2) - 1,
+            0
+        )
 
-        for i in range(0, len(x2), frame_skip):
-            trace.set_data(x2[:i], y2[:i])
-            rod1.set_data([0, x1[i]], [0, y1[i]])
-            rod2.set_data([x1[i], x2[i]], [y1[i], y2[i]])
-            m1_dot.set_offsets([[x1[i], y1[i]]])
-            m2_dot.set_offsets([[x2[i], y2[i]]])
-            ax.set_title("Double pendulum (chaotic motion)")
-            plot_area.pyplot(fig)
+        ax.plot(x2[:i], y2[:i], color="purple", linewidth=1, label="Trace (mass 2)")
+        ax.plot([0, x1[i]], [0, y1[i]], color="black", linewidth=2)
+        ax.plot([x1[i], x2[i]], [y1[i], y2[i]], color="black", linewidth=2)
+
+        ax.scatter(x1[i], y1[i], color="blue", s=30, label="Mass 1")
+        ax.scatter(x2[i], y2[i], color="red", s=20, label="Mass 2")
+
+        ax.set_title(f"t = {i * dt:.2f} s")
+        ax.legend()
+
+        st.pyplot(fig)
 
 
 if __name__ == "__main__":
