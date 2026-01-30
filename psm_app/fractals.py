@@ -78,7 +78,7 @@ def run():
     if fractal_type == "Barnsley Fern":
         st.subheader("Barnsley Fern (IFS)")
 
-        n = st.sidebar.slider("Number of points", 1_000, 100_000, 30_000)
+        n = st.sidebar.slider("Number of points", 1_0, 100_000, 30_000)
 
         xs, ys = barnsley_fern(n)
 
