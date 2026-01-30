@@ -39,7 +39,7 @@ def mandelbrot(width, height, max_iter, zoom, cx, cy):
     M = np.zeros(C.shape)
 
     for i in range(max_iter):
-        mask = np.abs(Z) <= 2
+        mask = np.abs(Z) <= 2 # Only iterate for points within the boundary 
         Z[mask] = Z[mask] ** 2 + C[mask]
         M[mask] = i
 
@@ -58,7 +58,7 @@ def julia_set(width, height, c, max_iter):
 
     for i in range(max_iter):
         mask = np.abs(Z) <= 2
-        Z[mask] = Z[mask] ** 3 + c
+        Z[mask] = Z[mask] ** 2 + c
         M[mask] = i
 
     return M
